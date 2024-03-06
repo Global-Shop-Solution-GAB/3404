@@ -1,0 +1,120 @@
+Program.Sub.ScreenSU.Start
+Program.Sub.ScreenSU.End
+
+Program.Sub.Preflight.Start
+
+Variable.UDT.uJob.Define("Terminal",String,Terminal)
+Variable.UDT.uJob.Define("Job",String,Job)
+Variable.UDT.uJob.Define("Suffix",String,Suffix)
+Variable.UDT.uJob.Define("Description",String,Description)
+Variable.uGlobal.uJob.Declare("uJob")
+Program.Sub.Preflight.End
+
+
+Program.Sub.Main.Start
+'Coded by: mla
+'Project Start Date: 12/7/2011
+'Hooks:
+'  16090
+'Notes:
+'  K&B Machine Works
+'  Quote 3130
+F.ODBC.Connection!con.OpenConnection(V.Ambient.PDSN,V.Ambient.PUser,V.Ambient.PPass)
+F.Intrinsic.Control.If(V.Passed.009001,=,"001811")
+	F.Intrinsic.Control.CallSub(Loadrst)
+F.Intrinsic.Control.Else
+	F.Intrinsic.Control.CallSub(Unload)
+F.Intrinsic.Control.EndIf
+
+Program.Sub.Main.End
+
+
+Program.Sub.LoadRST.Start
+F.Intrinsic.Control.SetErrorHandler("LoadRST_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare(String)
+V.Local.sSql.Declare(String)
+V.Local.iUB.Declare(Long)
+
+V.uGlobal.uJob.Redim(-1,-1)
+V.Local.iUB.Set(-1)
+F.Intrinsic.String.Concat("Delete GCG_3404_BCExtDesc where Terminal = '",V.Caller.Terminal,"'",V.Local.sSql)
+F.ODBC.Connection!con.Execute(V.Local.sSql)
+F.Intrinsic.String.Concat("Select JOB, SUFFIX from V_BI_BAR_HEAD where TERMINAL = '",V.Caller.Terminal,"' and COPY_NO = '0' and RPTID = '001811'",V.Local.sSql)
+F.ODBC.Connection!con.OpenRecordsetRO("rst",V.Local.sSql)
+F.Intrinsic.Control.DoUntil(V.ODBC.con!rst.EOF,=,True)
+	F.Intrinsic.String.Concat("Select JOB, SUFFIX, PART, DESCRIPTION, SALES_ORDER, SALES_ORDER_LINE from V_JOB_HEADER where JOB = '",V.ODBC.con!rst.FieldValTrim!JOB,"' and SUFFIX = '",V.ODBC.con!rst.FieldValTrim!SUFFIX,"'",V.Local.sSql)
+	F.ODBC.Connection!con.OpenRecordsetRO("rstJob",V.Local.sSql)
+	F.Intrinsic.Control.If(V.ODBC.con!rstJob.EOF,=,False)
+		F.Intrinsic.String.Concat("Select ORDER_NO, ORDER_LINE, TEXT_SEQ, TEXT from V_ORDER_TEXT where ORDER_NO = '",V.ODBC.con!rstJob.FieldValTrim!SALES_ORDER,"' and ORDER_LINE = '",V.ODBC.con!rstJob.FieldValTrim!SALES_ORDER_LINE,"' ORDER BY TEXT_SEQ",V.Local.sSql)
+		F.ODBC.Connection!con.OpenRecordsetRO("rstOrd",V.Local.sSql)
+		F.Intrinsic.Control.If(V.ODBC.con!rstOrd.EOF,=,True)
+			F.Intrinsic.String.Concat("Select PART, TEXT_SEQUENCE, TEXT_LINE1, TEXT_LINE2, TEXT_LINE3 from V_EXTRA_TEXT where PART = '",V.ODBC.con!rstJob.FieldValTrim!PART,"'",V.Local.sSql)
+			F.ODBC.Connection!con.OpenRecordsetRO("rstText",V.Local.sSql)
+			F.Intrinsic.Control.If(V.ODBC.con!rstText.EOF,=,False)
+				F.Intrinsic.Control.If(V.uGlobal.uJob.UBound,=,-1)
+				V.uGlobal.uJob.Redim(0,0)
+				F.Intrinsic.Control.EndIf
+				F.Intrinsic.Math.Add(V.Local.iUB,1,V.Local.iUB)
+				V.uGlobal.uJob.RedimPreserve(V.uGlobal.uJob.LBound,V.Local.iUB)
+				V.uGlobal.uJob(V.Local.iUB)!Terminal.Set(V.Caller.Terminal)
+				V.uGlobal.uJob(V.Local.iUB)!Job.Set(V.ODBC.con!rst.FieldValTrim!JOB)
+				V.uGlobal.uJob(V.Local.iUB)!Suffix.Set(V.ODBC.con!rst.FieldValTrim!SUFFIX)
+				V.uGlobal.uJob(V.Local.iUB)!Description.Set(V.ODBC.con!rstJob.FieldValTrim!DESCRIPTION)
+				F.Intrinsic.Control.DoUntil(V.ODBC.con!rstText.EOF,=,True)
+					F.Intrinsic.String.Concat(V.uGlobal.uJob(V.Local.iUB)!Description," ",V.ODBC.con!rstText.FieldValTrim!TEXT_LINE1," ",V.ODBC.con!rstText.FieldValTrim!TEXT_LINE2," ",V.ODBC.con!rstText.FieldValTrim!TEXT_LINE3,V.uGlobal.uJob(V.Local.iUB)!Description)
+					F.ODBC.con!rstText.MoveNext
+				F.Intrinsic.Control.Loop
+			F.Intrinsic.Control.EndIf
+			F.ODBC.con!rstText.Close
+		F.Intrinsic.Control.Else
+			F.Intrinsic.Control.If(V.uGlobal.uJob.UBound,=,-1)
+				V.uGlobal.uJob.Redim(0,0)
+			F.Intrinsic.Control.EndIf
+			F.Intrinsic.Math.Add(V.Local.iUB,1,V.Local.iUB)
+			V.uGlobal.uJob.RedimPreserve(V.uGlobal.uJob.LBound,V.Local.iUB)
+			V.uGlobal.uJob(V.Local.iUB)!Terminal.Set(V.Caller.Terminal)
+			V.uGlobal.uJob(V.Local.iUB)!Job.Set(V.ODBC.con!rst.FieldValTrim!JOB)
+			V.uGlobal.uJob(V.Local.iUB)!Suffix.Set(V.ODBC.con!rst.FieldValTrim!SUFFIX)
+			V.uGlobal.uJob(V.Local.iUB)!Description.Set(V.ODBC.con!rstJob.FieldValTrim!DESCRIPTION)
+			F.Intrinsic.Control.DoUntil(V.ODBC.con!rstOrd.EOF,=,True)
+				F.Intrinsic.String.Concat(V.uGlobal.uJob(V.Local.iUB)!Description," ",V.ODBC.con!rstOrd.FieldValTrim!TEXT,V.uGlobal.uJob(V.Local.iUB)!Description)
+				F.ODBC.con!rstOrd.MoveNext
+			F.Intrinsic.Control.Loop
+		F.Intrinsic.Control.EndIf
+		F.ODBC.con!rstOrd.Close
+	F.Intrinsic.Control.EndIf
+	F.ODBC.con!rstJob.Close
+	F.ODBC.con!rst.MoveNext
+F.Intrinsic.Control.Loop
+F.ODBC.con!rst.Close
+F.Intrinsic.Control.If(V.uGlobal.uJob.UBound,>,-1)
+	V.Local.sSql.Set("Select * from GCG_3404_BCExtDesc")
+	F.ODBC.Connection!con.OpenRecordsetRW("rst",V.Local.sSql)
+	F.Intrinsic.Variable.SaveUDTToRecordset("con","rst","Variable.uGlobal.uJob")
+	F.ODBC.con!rst.Close
+F.Intrinsic.Control.EndIf
+F.Intrinsic.Control.CallSub(Unload)
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("LoadRST_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	Function.Intrinsic.String.Concat("Project: GCG_BC_WO_Ext_Description.gas",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+Function.Intrinsic.Control.EndIf
+
+
+
+Program.Sub.LoadRST.End
+
+
+Program.Sub.Unload.Start
+F.ODBC.Connection!con.Close
+F.Intrinsic.Control.End
+
+Program.Sub.Unload.End
+
+
+
